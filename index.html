@@ -947,9 +947,10 @@
         if (existing) return;
 
         // 加入缓存
-        if (msgCache[currentGroupId]) {
-            msgCache[currentGroupId].push(msg);
+        if (!msgCache[currentGroupId]) {
+            msgCache[currentGroupId] = [];
         }
+        msgCache[currentGroupId].push(msg);
 
         // 检查是否需要日期分隔
         var lastDateEl = $messages.querySelector('.system-msg:last-child');
