@@ -33,21 +33,61 @@ app.use('/api/admin', adminRoutes);
 // 初始化 Socket.io
 initChat(io);
 
-// 初始化数据库：创建 ROOT 账户和默认群聊
+// 初始化数据库：建表 + ROOT 账户 + 默认群聊
 async function initDB() {
   try {
-    // 检查 ROOT 是否存在
+    // 建表（如果不存在）
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role ENUM('admin','user') DEFAULT 'user',
+        is_online TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_groups (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        created_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id)
+      ) ENGINE=InnoDB
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS group_members (
+        group_id INT, user_id INT,
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (group_id, user_id),
+        FOREIGN KEY (group_id) REFERENCES chat_groups(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        group_id INT, sender_id INT, text TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (group_id) REFERENCES chat_groups(id) ON DELETE CASCADE,
+        FOREIGN KEY (sender_id) REFERENCES users(id)
+      ) ENGINE=InnoDB
+    `);
+    console.log('[Init] 数据库表已就绪');
+
+    // 创建 ROOT 账户
     var [rows] = await pool.query('SELECT id FROM users WHERE username = ?', ['ROOT']);
     if (rows.length === 0) {
       var hashed = await bcrypt.hash('114514', 10);
-      var [result] = await pool.query(
+      await pool.query(
         'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
         ['ROOT', hashed, 'admin']
       );
       console.log('[Init] ROOT 账户已创建 (密码: 114514)');
     }
 
-    // 检查默认群聊是否存在
+    // 创建默认群聊
     var [groups] = await pool.query('SELECT id FROM chat_groups LIMIT 1');
     if (groups.length === 0) {
       await pool.query("INSERT INTO chat_groups (name, created_by) VALUES ('综合大厅', 1)");
