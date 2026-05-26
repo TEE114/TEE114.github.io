@@ -1,0 +1,39 @@
+CREATE DATABASE IF NOT EXISTS chat_app CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE chat_app;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  role ENUM('admin','user') DEFAULT 'user',
+  is_online TINYINT(1) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS chat_groups (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  created_by INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS group_members (
+  group_id INT,
+  user_id INT,
+  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (group_id, user_id),
+  FOREIGN KEY (group_id) REFERENCES chat_groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  group_id INT,
+  sender_id INT,
+  text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (group_id) REFERENCES chat_groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id) REFERENCES users(id)
+) ENGINE=InnoDB;
