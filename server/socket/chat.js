@@ -64,7 +64,7 @@ module.exports = function(io) {
         );
 
         var [rows] = await pool.query(
-          `SELECT m.id, m.text, m.created_at, m.sender_id, u.username, u.role
+          `SELECT m.id, m.group_id, m.text, m.created_at, m.sender_id, u.username, u.role
            FROM messages m JOIN users u ON m.sender_id = u.id
            WHERE m.id = ?`,
           [result.insertId]
